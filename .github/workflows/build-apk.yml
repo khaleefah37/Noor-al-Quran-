@@ -22,7 +22,7 @@ jobs:
           cache: true
 
       - name: Flutter version
-        run:flutter-version: '3.35.7'
+        run: flutter-version: '3.35.7'
 
       - name: Get dependencies
         run: flutter pub get
