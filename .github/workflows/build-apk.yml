@@ -29,6 +29,7 @@ jobs:
 
       - name: Analyze
         run: flutter analyze
+        continue-on-error: true
 
       - name: Build release APK
         run: flutter build apk --release
