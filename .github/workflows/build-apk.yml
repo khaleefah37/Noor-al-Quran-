@@ -20,6 +20,7 @@ jobs:
         with:
           flutter-version: '3.35.7'
           channel: stable
+          flutter-version: '3.35.7'
           cache: true
 
       - name: Flutter version
