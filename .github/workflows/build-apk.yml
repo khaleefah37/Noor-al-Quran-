@@ -41,11 +41,7 @@ jobs:
           name: Noor-Al-Quran-APK
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
-name: Build Android APK
-on:
-  workflow_dispatch: {}
-
-jobs:
+ jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
