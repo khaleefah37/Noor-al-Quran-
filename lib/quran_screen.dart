@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'quran_models.dart';
+import 'models/quran_models.dart';
 
 class QuranScreen extends StatefulWidget {
   const QuranScreen({super.key});
