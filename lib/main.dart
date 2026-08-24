@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'models/quran_models.dart';
-
+import 'Quran_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final session = await AudioSession.instance;
