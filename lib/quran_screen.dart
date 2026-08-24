@@ -11,7 +11,7 @@ class QuranScreen extends StatefulWidget {
 }
 
 class _QuranScreenState extends State<QuranScreen> {
-  List<QuranSurah> surahs = [];
+  List<SurahModel> surahs = [];
   bool loading = true;
 
   @override
@@ -21,58 +21,109 @@ class _QuranScreenState extends State<QuranScreen> {
   }
 
   Future<void> loadQuran() async {
-    final jsonString =
-        await rootBundle.loadString('assets/data/quran.json');
-    final data = jsonDecode(jsonString);
+    try {
+      final jsonString =
+          await rootBundle.loadString('assets/data/quran.json');
 
-    final List<dynamic> items =
-        data is List ? data : (data['data'] ?? []);
+      final dynamic data = jsonDecode(jsonString);
 
-    final result = <QuranSurah>[];
+      final List<dynamic> items =
+          data is List ? data : (data['data'] ?? []);
 
-    for (final item in items) {
-      final ayahItems =
-          (item['ayahs'] ?? item['verses'] ?? []) as List<dynamic>;
+      final List<SurahModel> result = [];
 
-      result.add(
-        QuranSurah(
-          number: item['id'] ?? item['number'] ?? result.length + 1,
-          name: item['name'] ?? item['arabicName'] ?? '',
-          englishName:
-              item['englishName'] ?? item['english_name'] ?? '',
-          revelationType:
-              item['revelationType'] ?? item['revelation_type'] ?? '',
-          ayahs: [
-            for (var i = 0; i < ayahItems.length; i++)
-              QuranAyah(
-                number:
-                    ayahItems[i]['numberInSurah'] ?? i + 1,
-                text: ayahItems[i]['text'] ?? '',
-              ),
-          ],
-        ),
-      );
+      for (final item in items) {
+        final List<dynamic> ayahItems =
+            (item['ayahs'] ?? item['verses'] ?? []) as List<dynamic>;
+
+        final ayahs = <AyahModel>[];
+
+        for (var i = 0; i < ayahItems.length; i++) {
+          final ayah = ayahItems[i];
+
+          ayahs.add(
+            AyahModel(
+              number: ayah['number'] ?? i + 1,
+              numberInSurah:
+                  ayah['numberInSurah'] ?? i + 1,
+              textArabic:
+                  ayah['textArabic'] ?? ayah['text'] ?? '',
+              translation:
+                  ayah['translation'] ?? '',
+            ),
+          );
+        }
+
+        result.add(
+          SurahModel(
+            number:
+                item['number'] ?? item['id'] ?? result.length + 1,
+            nameArabic:
+                item['nameArabic'] ?? item['name'] ?? '',
+            nameEnglish:
+                item['nameEnglish'] ??
+                    item['englishName'] ??
+                    '',
+            translationName:
+                item['translationName'] ?? '',
+            totalAyahs:
+                item['totalAyahs'] ??
+                    item['numberOfAyahs'] ??
+                    ayahs.length,
+            revelationType:
+                item['revelationType'] ?? '',
+            ayahs: ayahs,
+          ),
+        );
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        surahs = result;
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint('Quran loading error: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        loading = false;
+      });
     }
-
-    if (!mounted) return;
-
-    setState(() {
-      surahs = result;
-      loading = false;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     if (loading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (surahs.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Noor Al-Quran'),
+        ),
+        body: const Center(
+          child: Text(
+            'Quran data could not be loaded.',
+            style: TextStyle(fontSize: 16),
+          ),
+        ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Noor Al-Quran'),
+        title: const Text(
+          'Noor Al-Quran',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: ListView.builder(
@@ -85,7 +136,7 @@ class _QuranScreenState extends State<QuranScreen> {
               child: Text('${surah.number}'),
             ),
             title: Text(
-              surah.name,
+              surah.nameArabic,
               textAlign: TextAlign.right,
               style: const TextStyle(
                 fontSize: 21,
@@ -93,14 +144,16 @@ class _QuranScreenState extends State<QuranScreen> {
               ),
             ),
             subtitle: Text(
-              '${surah.englishName} • ${surah.ayahs.length} Ayahs',
+              '${surah.nameEnglish} • ${surah.totalAyahs} Ayahs',
             ),
             trailing: Text(surah.revelationType),
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => SurahReaderScreen(surah: surah),
+                  builder: (_) => SurahReaderScreen(
+                    surah: surah,
+                  ),
                 ),
               );
             },
@@ -112,7 +165,7 @@ class _QuranScreenState extends State<QuranScreen> {
 }
 
 class SurahReaderScreen extends StatelessWidget {
-  final QuranSurah surah;
+  final SurahModel surah;
 
   const SurahReaderScreen({
     super.key,
@@ -123,7 +176,7 @@ class SurahReaderScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(surah.name),
+        title: Text(surah.nameArabic),
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -131,26 +184,36 @@ class SurahReaderScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final ayah = surah.ayahs[index];
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  ayah.text,
-                  textAlign: TextAlign.right,
-                  textDirection: TextDirection.rtl,
-                  style: const TextStyle(
-                    fontSize: 25,
-                    height: 1.8,
+          return Card(
+            margin: const EdgeInsets.only(bottom: 14),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    ayah.textArabic,
+                    textAlign: TextAlign.right,
+                    textDirection: TextDirection.rtl,
+                    style: const TextStyle(
+                      fontSize: 25,
+                      height: 1.8,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '﴿${ayah.number}﴾',
-                  textAlign: TextAlign.right,
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    ayah.translation,
+                    style: const TextStyle(
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '﴿${ayah.numberInSurah}﴾',
+                    textAlign: TextAlign.right,
+                  ),
+                ],
+              ),
             ),
           );
         },
