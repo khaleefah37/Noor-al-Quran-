@@ -72,7 +72,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.menu_book),
-            label: 'Surah Al-Fatihah',
+            label: 'Quran',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.admin_panel_settings),
