@@ -7,7 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'models/quran_models.dart';
-import 'Quran_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final session = await AudioSession.instance;
@@ -235,7 +234,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                 colors: [Color(0xFF064E3B), Color(0xFF18181B)],
               ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF047857).withOpacity(0.5)),
+              border: Border.all(color: const Color(0xFF047857).withValues(alpha: 0.5)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -594,7 +593,6 @@ class _AdminUploadScreenState extends State<AdminUploadScreen> {
                       itemBuilder: (context, i) {
                         final f = _savedFiles[i];
                         final name = f.path.split(Platform.pathSeparator).last;
-                        final isSelected = _selectedSavedPath == f.path;
                         return ListTile(
                           tileColor: const Color(0xFF0F1720),
                           title: Text(name, style: const TextStyle(color: Colors.white)),
