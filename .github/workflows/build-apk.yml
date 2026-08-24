@@ -40,7 +40,7 @@ jobs:
         with:
           name: Noor-Al-Quran-APK
           path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
+          
  jobs:
   build:
     name: Build Android APK
