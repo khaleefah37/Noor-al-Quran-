@@ -57,7 +57,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      const QuranScreen(),
+      // Pass the selected custom audio path into the Surah reader so uploads take effect immediately.
+      SurahReaderScreen(customAudioPath: _customAudioPath),
       AdminUploadScreen(onAudioSaved: _onCustomAudioSaved),
     ];
 
@@ -381,6 +382,16 @@ class _AdminUploadScreenState extends State<AdminUploadScreen> {
   String? _selectedFileName;
   bool _isSaving = false;
 
+  // track saved custom files in app documents
+  List<FileSystemEntity> _savedFiles = [];
+  String? _selectedSavedPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedFiles();
+  }
+
   void _login() {
     if (_passcodeController.text.trim() == 'noor2026') {
       setState(() => _isAuthenticated = true);
@@ -405,16 +416,37 @@ class _AdminUploadScreenState extends State<AdminUploadScreen> {
     }
   }
 
+  Future<void> _loadSavedFiles() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final files = Directory(dir.path)
+        .listSync()
+        .where((f) => f.path.toLowerCase().endsWith('.mp3') || f.path.toLowerCase().endsWith('.m4a') || f.path.toLowerCase().endsWith('.wav') || f.path.toLowerCase().endsWith('.aac'))
+        .toList();
+    setState(() {
+      _savedFiles = files;
+      if (_savedFiles.isNotEmpty && _selectedSavedPath == null) {
+        _selectedSavedPath = _savedFiles.last.path;
+      }
+    });
+  }
+
   Future<void> _saveAndConnectAudio() async {
     if (_selectedFilePath == null) return;
     setState(() => _isSaving = true);
 
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final destination = File("${dir.path}/custom_fatihah.mp3");
+      final basename = _selectedFileName ?? _selectedFilePath!.split(Platform.pathSeparator).last;
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final destination = File('${dir.path}/custom_${timestamp}_$basename');
       await File(_selectedFilePath!).copy(destination.path);
 
+      await _loadSavedFiles();
+
       widget.onAudioSaved(destination.path);
+      setState(() {
+        _selectedSavedPath = destination.path;
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -429,6 +461,31 @@ class _AdminUploadScreenState extends State<AdminUploadScreen> {
       }
     } finally {
       setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _connectSelectedSaved() async {
+    if (_selectedSavedPath == null) return;
+    widget.onAudioSaved(_selectedSavedPath!);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selected recitation connected!')),
+      );
+    }
+  }
+
+  Future<void> _deleteSaved(String path) async {
+    try {
+      final f = File(path);
+      if (await f.exists()) await f.delete();
+      await _loadSavedFiles();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Deleted saved recitation')),
+        );
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
     }
   }
 
@@ -525,6 +582,45 @@ class _AdminUploadScreenState extends State<AdminUploadScreen> {
               child: _isSaving
                   ? const CircularProgressIndicator(color: Colors.white)
                   : const Text('Save & Connect to Al-Fatihah', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 24),
+            const Text('Saved recitations:', style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _savedFiles.isEmpty
+                  ? const Center(child: Text('No saved recitations', style: TextStyle(color: Colors.grey)))
+                  : ListView.builder(
+                      itemCount: _savedFiles.length,
+                      itemBuilder: (context, i) {
+                        final f = _savedFiles[i];
+                        final name = f.path.split(Platform.pathSeparator).last;
+                        final isSelected = _selectedSavedPath == f.path;
+                        return ListTile(
+                          tileColor: const Color(0xFF0F1720),
+                          title: Text(name, style: const TextStyle(color: Colors.white)),
+                          leading: Radio<String?>(
+                            value: f.path,
+                            groupValue: _selectedSavedPath,
+                            onChanged: (val) => setState(() => _selectedSavedPath = val),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.link, color: Color(0xFF10B981)),
+                                onPressed: () => _connectSelectedSaved(),
+                                tooltip: 'Connect this recitation',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                onPressed: () => _deleteSaved(f.path),
+                                tooltip: 'Delete file',
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
