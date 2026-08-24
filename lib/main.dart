@@ -7,6 +7,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'models/quran_models.dart';
+import 'quran_screen.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final session = await AudioSession.instance;
@@ -56,8 +58,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      // Pass the selected custom audio path into the Surah reader so uploads take effect immediately.
-      SurahReaderScreen(customAudioPath: _customAudioPath),
+      const QuranScreen(),
       AdminUploadScreen(onAudioSaved: _onCustomAudioSaved),
     ];
 
