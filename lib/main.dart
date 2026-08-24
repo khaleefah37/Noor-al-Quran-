@@ -208,6 +208,9 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final maxSeconds = _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0;
+    final positionSeconds = _position.inSeconds.toDouble().clamp(0.0, maxSeconds);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Noor Al-Quran (نور القرآن)', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -231,7 +234,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                 colors: [Color(0xFF064E3B), Color(0xFF18181B)],
               ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF047857).withValues(alpha: 0.5)),
+              border: Border.all(color: const Color(0xFF047857).withOpacity(0.5)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -309,8 +312,8 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                   ),
                   child: Slider(
-                    value: _position.inSeconds.toDouble().clamp(0.0, _duration.inSeconds.toDouble()),
-                    max: _duration.inSeconds.toDouble() > 0 ? _duration.inSeconds.toDouble() : 1.0,
+                    value: positionSeconds,
+                    max: maxSeconds,
                     activeColor: const Color(0xFF10B981),
                     inactiveColor: const Color(0xFF3F3F46),
                     onChanged: (val) {
