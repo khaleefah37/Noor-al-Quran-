@@ -8,8 +8,6 @@ environment:
 
 dependencies:
   flutter:
-  assets:
-    - assets/data/quran.json
     sdk: flutter
   just_audio: ^0.9.42
   audio_session: ^0.1.21
@@ -25,6 +23,9 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 flutter:
+  uses-material-design: true
+  assets:
+    - assets/data/quran.json
   uses-material-design: true
   assets:
     - assets/
