@@ -8,7 +8,7 @@ Flutter Android test app for Surah Al-Fatihah with:
 - GitHub Actions Android APK build
 
 ## Admin PIN
-`noor2026`
+`khaleefah37`
 
 ## Build locally
 ```bash
