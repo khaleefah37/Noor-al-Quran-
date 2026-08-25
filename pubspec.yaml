@@ -1,21 +1,22 @@
 name: noor_al_quran
-description: Noor Al-Quran - Surah Al-Fatihah test Quran recitation app.
+description: Noor Al-Quran - Complete Quran App
 publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.2.0 <4.0.0"
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  just_audio: ^0.9.42
-  audio_session: ^0.1.21
-  dio: ^5.7.0
-  path_provider: ^2.1.5
-  file_picker: ^8.1.7
-  shared_preferences: ^2.3.3
+  cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
+  just_audio: ^0.10.4
+  audio_session: ^0.2.2
+  shared_preferences: ^2.5.3
+  path_provider: ^2.1.5
+  dio: ^5.8.0+1
+  file_picker: ^10.2.0
 
 dev_dependencies:
   flutter_test:
@@ -26,6 +27,3 @@ flutter:
   uses-material-design: true
   assets:
     - assets/data/quran.json
-  uses-material-design: true
-  assets:
-    - assets/
