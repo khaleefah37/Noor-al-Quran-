@@ -1,4 +1,4 @@
-import "Quran_screen.dart";
+import "quran_screen.dart";
 import 'quran_screen.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
