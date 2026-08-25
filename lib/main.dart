@@ -58,7 +58,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      const QuranScreen(),
+      QuranScreen(),
       AdminUploadScreen(onAudioSaved: _onCustomAudioSaved),
     ];
 
