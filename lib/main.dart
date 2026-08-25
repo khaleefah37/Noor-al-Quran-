@@ -1,3 +1,5 @@
+import "Quran_screen.dart";
+import 'quran_screen.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -22,6 +24,9 @@ class NoorAlQuranApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      routes: {
+        '/quran': (_) => const QuranScreen(),
+      },
       title: 'Noor Al-Quran',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
