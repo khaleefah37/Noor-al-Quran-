@@ -1,15 +1,13 @@
 import 'dart:io';
 
 import 'package:audio_session/audio_session.dart';
-import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'quran_screen.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final session = await AudioSession.instance;
@@ -36,16 +34,13 @@ class NoorAlQuranApp extends StatelessWidget {
           secondary: Color(0xFF10B981),
           surface: Color(0xFF18181B),
         ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF18181B),
-        ),
       ),
+
+      home: const MainTabScreen(),
 
       routes: {
         '/quran': (_) => const QuranScreen(),
       },
-
-      home: const MainTabScreen(),
     );
   }
 }
@@ -58,36 +53,32 @@ class MainTabScreen extends StatefulWidget {
 }
 
 class _MainTabScreenState extends State<MainTabScreen> {
-  int _currentIndex = 0;
+  int currentIndex = 0;
 
-  String? _customAudioPath;
+  String? customAudioPath;
 
-  void _onCustomAudioSaved(String path) {
+  void onCustomAudioSaved(String path) {
     setState(() {
-      _customAudioPath = path;
-      _currentIndex = 0;
+      customAudioPath = path;
+      currentIndex = 0;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      const QuranScreen(),
-
-      AdminUploadScreen(
-        onAudioSaved: _onCustomAudioSaved,
-      ),
-    ];
-
     return Scaffold(
-      body: screens[_currentIndex],
+      body: currentIndex == 0
+          ? const QuranScreen()
+          : AdminUploadScreen(
+              onAudioSaved: onCustomAudioSaved,
+            ),
 
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
+        currentIndex: currentIndex,
 
         onTap: (index) {
           setState(() {
-            _currentIndex = index;
+            currentIndex = index;
           });
         },
 
@@ -100,10 +91,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
             icon: Icon(Icons.menu_book),
             label: 'Quran',
           ),
-
           BottomNavigationBarItem(
             icon: Icon(Icons.admin_panel_settings),
-            label: 'Admin MP3',
+            label: 'Admin',
           ),
         ],
       ),
@@ -111,13 +101,12 @@ class _MainTabScreenState extends State<MainTabScreen> {
   }
 }
 
-
 // ============================================================
-// ADMIN AUDIO UPLOAD SCREEN
+// ADMIN UPLOAD
 // ============================================================
 
 class AdminUploadScreen extends StatefulWidget {
-  final Function(String path) onAudioSaved;
+  final void Function(String path) onAudioSaved;
 
   const AdminUploadScreen({
     super.key,
@@ -131,59 +120,53 @@ class AdminUploadScreen extends StatefulWidget {
 
 class _AdminUploadScreenState
     extends State<AdminUploadScreen> {
-  bool _isAuthenticated = false;
+  bool authenticated = false;
+  bool saving = false;
 
-  final TextEditingController _passcodeController =
+  final TextEditingController pinController =
       TextEditingController();
 
-  String? _selectedFilePath;
-  String? _selectedFileName;
+  String? selectedFilePath;
+  String? selectedFileName;
 
-  bool _isSaving = false;
-
-  List<FileSystemEntity> _savedFiles = [];
-
-  String? _selectedSavedPath;
+  List<FileSystemEntity> savedFiles = [];
 
   @override
   void initState() {
     super.initState();
-    _loadSavedFiles();
+    loadSavedFiles();
   }
 
   @override
   void dispose() {
-    _passcodeController.dispose();
+    pinController.dispose();
     super.dispose();
   }
 
   // ==========================================================
-  // ADMIN LOGIN
+  // LOGIN
   // ==========================================================
 
-  void _login() {
-    if (_passcodeController.text.trim() == 'noor2026') {
+  void login() {
+    if (pinController.text.trim() == 'noor2026') {
       setState(() {
-        _isAuthenticated = true;
+        authenticated = true;
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Invalid Admin PIN.',
-          ),
+          content: Text('Invalid Admin PIN.'),
         ),
       );
     }
   }
 
   // ==========================================================
-  // PICK AUDIO FILE
+  // PICK AUDIO
   // ==========================================================
 
-  Future<void> _pickMp3File() async {
-    final result =
-        await FilePicker.platform.pickFiles(
+  Future<void> pickAudio() async {
+    final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: [
         'mp3',
@@ -193,161 +176,123 @@ class _AdminUploadScreenState
       ],
     );
 
-    if (result != null &&
-        result.files.single.path != null) {
-      setState(() {
-        _selectedFilePath =
-            result.files.single.path;
+    if (result == null) return;
 
-        _selectedFileName =
-            result.files.single.name;
-      });
-    }
+    final path = result.files.single.path;
+
+    if (path == null) return;
+
+    setState(() {
+      selectedFilePath = path;
+      selectedFileName = result.files.single.name;
+    });
   }
 
   // ==========================================================
-  // LOAD SAVED AUDIO FILES
+  // LOAD SAVED FILES
   // ==========================================================
 
-  Future<void> _loadSavedFiles() async {
-    final dir =
+  Future<void> loadSavedFiles() async {
+    final directory =
         await getApplicationDocumentsDirectory();
 
-    final files = Directory(dir.path)
+    final files = Directory(directory.path)
         .listSync()
-        .where(
-          (file) {
-            final path =
-                file.path.toLowerCase();
+        .where((file) {
+          final path = file.path.toLowerCase();
 
-            return path.endsWith('.mp3') ||
-                path.endsWith('.m4a') ||
-                path.endsWith('.wav') ||
-                path.endsWith('.aac');
-          },
-        )
+          return path.endsWith('.mp3') ||
+              path.endsWith('.wav') ||
+              path.endsWith('.m4a') ||
+              path.endsWith('.aac');
+        })
         .toList();
 
     if (!mounted) return;
 
     setState(() {
-      _savedFiles = files;
-
-      if (_savedFiles.isNotEmpty &&
-          _selectedSavedPath == null) {
-        _selectedSavedPath =
-            _savedFiles.last.path;
-      }
+      savedFiles = files;
     });
   }
 
   // ==========================================================
-  // SAVE AND CONNECT AUDIO
+  // SAVE AUDIO
   // ==========================================================
 
-  Future<void> _saveAndConnectAudio() async {
-    if (_selectedFilePath == null) {
+  Future<void> saveAudio() async {
+    if (selectedFilePath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select an audio file first.'),
+        ),
+      );
       return;
     }
 
     setState(() {
-      _isSaving = true;
+      saving = true;
     });
 
     try {
-      final dir =
+      final directory =
           await getApplicationDocumentsDirectory();
 
-      final basename =
-          _selectedFileName ??
-              _selectedFilePath!
-                  .split(Platform.pathSeparator)
-                  .last;
+      final originalName =
+          selectedFileName ??
+          selectedFilePath!.split(
+            Platform.pathSeparator,
+          ).last;
 
       final timestamp =
-          DateTime.now()
-              .millisecondsSinceEpoch;
+          DateTime.now().millisecondsSinceEpoch;
 
       final destination = File(
-        '${dir.path}/custom_${timestamp}_$basename',
+        '${directory.path}/custom_${timestamp}_$originalName',
       );
 
-      await File(_selectedFilePath!)
+      await File(selectedFilePath!)
           .copy(destination.path);
 
-      await _loadSavedFiles();
+      await loadSavedFiles();
 
-      widget.onAudioSaved(
-        destination.path,
-      );
+      widget.onAudioSaved(destination.path);
 
       if (!mounted) return;
 
-      setState(() {
-        _selectedSavedPath =
-            destination.path;
-      });
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Custom recitation saved successfully!',
+            'Recitation saved successfully.',
           ),
         ),
       );
+
+      setState(() {
+        selectedFilePath = null;
+        selectedFileName = null;
+      });
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Error saving audio: $e',
-          ),
+          content: Text('Save failed: $e'),
         ),
       );
     } finally {
       if (mounted) {
         setState(() {
-          _isSaving = false;
+          saving = false;
         });
       }
     }
   }
 
   // ==========================================================
-  // CONNECT SAVED AUDIO
-  // ==========================================================
-
-  Future<void> _connectSelectedSaved() async {
-    if (_selectedSavedPath == null) {
-      return;
-    }
-
-    widget.onAudioSaved(
-      _selectedSavedPath!,
-    );
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Selected recitation connected!',
-        ),
-      ),
-    );
-  }
-
-  // ==========================================================
   // DELETE AUDIO
   // ==========================================================
 
-  Future<void> _deleteSaved(
-    String path,
-  ) async {
+  Future<void> deleteFile(String path) async {
     try {
       final file = File(path);
 
@@ -355,27 +300,21 @@ class _AdminUploadScreenState
         await file.delete();
       }
 
-      await _loadSavedFiles();
+      await loadSavedFiles();
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Saved recitation deleted.',
-          ),
+          content: Text('Recitation deleted.'),
         ),
       );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Delete failed: $e',
-          ),
+          content: Text('Delete failed: $e'),
         ),
       );
     }
@@ -385,16 +324,15 @@ class _AdminUploadScreenState
   // LOGIN SCREEN
   // ==========================================================
 
-  Widget _buildLoginScreen() {
+  Widget loginScreen() {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Admin Authentication',
-        ),
+        title: const Text('Admin Authentication'),
       ),
 
       body: Padding(
         padding: const EdgeInsets.all(24),
+
         child: Column(
           mainAxisAlignment:
               MainAxisAlignment.center,
@@ -416,10 +354,10 @@ class _AdminUploadScreenState
               ),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
             const Text(
-              'Enter your administrator PIN.',
+              'Enter administrator PIN.',
               style: TextStyle(
                 color: Colors.grey,
               ),
@@ -428,28 +366,222 @@ class _AdminUploadScreenState
             const SizedBox(height: 25),
 
             TextField(
-              controller:
-                  _passcodeController,
-
+              controller: pinController,
               obscureText: true,
 
-              decoration:
-                  InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Admin PIN',
-
                 filled: true,
+                fillColor: const Color(0xFF18181B),
 
-                fillColor:
-                    const Color(0xFF18181B),
-
-                border:
-                    OutlineInputBorder(
+                border: OutlineInputBorder(
                   borderRadius:
-                      BorderRadius.circular(
-                    12,
+                      BorderRadius.circular(12),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+
+              child: ElevatedButton(
+                onPressed: login,
+
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      const Color(0xFF059669),
+                ),
+
+                child: const Text(
+                  'Login',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // ADMIN SCREEN
+  // ==========================================================
+
+  Widget adminScreen() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Admin Audio Uploader',
+        ),
+
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+
+            onPressed: () {
+              setState(() {
+                authenticated = false;
+              });
+            },
+          ),
+        ],
+      ),
+
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+
+            decoration: BoxDecoration(
+              color: const Color(0xFF18181B),
+
+              borderRadius:
+                  BorderRadius.circular(12),
+
+              border: Border.all(
+                color: const Color(0xFF27272A),
+              ),
+            ),
+
+            child: const Text(
+              'Select a Quran recitation audio file. '
+              'It will be saved on this device.',
+              style: TextStyle(
+                color: Colors.white70,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          OutlinedButton.icon(
+            onPressed: pickAudio,
+
+            icon: const Icon(
+              Icons.audio_file,
+              color: Color(0xFF10B981),
+            ),
+
+            label: Text(
+              selectedFileName ??
+                  'Select Audio File',
+            ),
+
+            style: OutlinedButton.styleFrom(
+              padding:
+                  const EdgeInsets.symmetric(
+                vertical: 20,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          ElevatedButton.icon(
+            onPressed: saving
+                ? null
+                : saveAudio,
+
+            icon: const Icon(Icons.save),
+
+            label: Text(
+              saving
+                  ? 'Saving...'
+                  : 'Save Recitation',
+            ),
+
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  const Color(0xFF059669),
+
+              padding:
+                  const EdgeInsets.symmetric(
+                vertical: 16,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
+          const Text(
+            'Saved Recitations',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          if (savedFiles.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+
+              child: Text(
+                'No saved recitations.',
+                textAlign: TextAlign.center,
+
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+
+          for (final file in savedFiles)
+            Card(
+              color: const Color(0xFF18181B),
+
+              child: ListTile(
+                leading: const Icon(
+                  Icons.music_note,
+                  color: Color(0xFF10B981),
+                ),
+
+                title: Text(
+                  file.path.split(
+                    Platform.pathSeparator,
+                  ).last,
+
+                  maxLines: 1,
+                  overflow:
+                      TextOverflow.ellipsis,
+                ),
+
+                trailing: IconButton(
+                  icon: const Icon(
+                    Icons.delete,
+                    color: Colors.redAccent,
+                  ),
+
+                  onPressed: () {
+                    deleteFile(file.path);
+                  },
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!authenticated) {
+      return loginScreen();
+    }
+
+    return adminScreen();
+  }
+}            ),
             ),
 
             const SizedBox(height: 18),
