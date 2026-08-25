@@ -15,6 +15,7 @@ class QuranScreen extends StatefulWidget {
 class _QuranScreenState extends State<QuranScreen> {
   List<SurahModel> surahs = [];
   bool loading = true;
+  String? error;
 
   @override
   void initState() {
@@ -27,21 +28,45 @@ class _QuranScreenState extends State<QuranScreen> {
       final jsonString =
           await rootBundle.loadString('assets/data/quran.json');
 
-      final List<dynamic> data = jsonDecode(jsonString);
+      final decoded = jsonDecode(jsonString);
+
+      if (decoded is! List) {
+        throw Exception('Quran JSON must contain a list of Surahs');
+      }
 
       final result = <SurahModel>[];
 
-      for (final item in data) {
-        final List<dynamic> verses = item['text'] ?? [];
+      for (final item in decoded) {
+        if (item is! Map) continue;
+
+        final rawText = item['text'];
+
+        final List<dynamic> verses =
+            rawText is List ? rawText : <dynamic>[];
 
         final ayahs = <AyahModel>[];
 
-        for (var i = 0; i < verses.length; i++) {
+        for (int i = 0; i < verses.length; i++) {
+          final verse = verses[i];
+
+          String arabicText = '';
+
+          if (verse is String) {
+            arabicText = verse;
+          } else if (verse is Map) {
+            arabicText =
+                (verse['text'] ??
+                        verse['textArabic'] ??
+                        verse['arabic'] ??
+                        '')
+                    .toString();
+          }
+
           ayahs.add(
             AyahModel(
               number: i + 1,
               numberInSurah: i + 1,
-              textArabic: verses[i].toString(),
+              textArabic: arabicText,
               translation: '',
             ),
           );
@@ -49,12 +74,13 @@ class _QuranScreenState extends State<QuranScreen> {
 
         result.add(
           SurahModel(
-            number: item['id'] ?? result.length + 1,
-            nameArabic: item['name'] ?? '',
-            nameEnglish: item['translation'] ?? '',
-            translationName: item['translation'] ?? '',
-            totalAyahs: item['total_verse'] ?? ayahs.length,
-            revelationType: item['revelationType'] ?? '',
+            number: int.tryParse('${item['id']}') ?? result.length + 1,
+            nameArabic: '${item['name'] ?? ''}',
+            nameEnglish: '${item['translation'] ?? ''}',
+            translationName: '${item['translation'] ?? ''}',
+            totalAyahs:
+                int.tryParse('${item['total_verse']}') ?? ayahs.length,
+            revelationType: '${item['revelationType'] ?? ''}',
             ayahs: ayahs,
           ),
         );
@@ -65,7 +91,10 @@ class _QuranScreenState extends State<QuranScreen> {
       setState(() {
         surahs = result;
         loading = false;
+        error = null;
       });
+
+      debugPrint('Quran loaded successfully: ${result.length} Surahs');
     } catch (e) {
       debugPrint('Quran loading error: $e');
 
@@ -73,6 +102,7 @@ class _QuranScreenState extends State<QuranScreen> {
 
       setState(() {
         loading = false;
+        error = e.toString();
       });
     }
   }
@@ -82,20 +112,62 @@ class _QuranScreenState extends State<QuranScreen> {
     if (loading) {
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading Quran...'),
+            ],
+          ),
         ),
       );
     }
 
-    if (surahs.isEmpty) {
+    if (error != null || surahs.isEmpty) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Noor Al-Quran'),
         ),
-        body: const Center(
-          child: Text(
-            'Quran data could not be loaded.',
-            style: TextStyle(fontSize: 16),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 60,
+                  color: Colors.redAccent,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Quran data could not be loaded',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  error ?? 'No Surahs found in the Quran data.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      loading = true;
+                      error = null;
+                    });
+                    loadQuran();
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -114,30 +186,36 @@ class _QuranScreenState extends State<QuranScreen> {
         itemBuilder: (context, index) {
           final surah = surahs[index];
 
-          return ListTile(
-            leading: CircleAvatar(
-              child: Text('${surah.number}'),
+          return Card(
+            margin: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 5,
             ),
-            title: Text(
-              surah.nameArabic,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 21,
-                fontWeight: FontWeight.bold,
+            child: ListTile(
+              leading: CircleAvatar(
+                child: Text('${surah.number}'),
               ),
-            ),
-            subtitle: Text(
-              '${surah.nameEnglish} • ${surah.totalAyahs} Ayahs',
-            ),
-            trailing: Text(surah.revelationType),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SurahReaderScreen(surah: surah),
+              title: Text(
+                surah.nameArabic,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.bold,
                 ),
-              );
-            },
+              ),
+              subtitle: Text(
+                '${surah.nameEnglish} • ${surah.totalAyahs} Ayahs',
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SurahReaderScreen(surah: surah),
+                  ),
+                );
+              },
+            ),
           );
         },
       ),
@@ -160,15 +238,15 @@ class SurahReaderScreen extends StatelessWidget {
         title: Text(surah.nameArabic),
       ),
       body: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         itemCount: surah.ayahs.length,
         itemBuilder: (context, index) {
           final ayah = surah.ayahs[index];
 
           return Card(
-            margin: const EdgeInsets.only(bottom: 14),
+            margin: const EdgeInsets.only(bottom: 12),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -178,20 +256,26 @@ class SurahReaderScreen extends StatelessWidget {
                     textDirection: TextDirection.rtl,
                     style: const TextStyle(
                       fontSize: 25,
-                      height: 1.8,
+                      height: 1.9,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  if (ayah.translation.isNotEmpty)
+                  const SizedBox(height: 10),
+                  Text(
+                    '﴿${ayah.numberInSurah}﴾',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontSize: 16,
+                    ),
+                  ),
+                  if (ayah.translation.isNotEmpty) ...[
+                    const Divider(),
                     Text(
                       ayah.translation,
                       style: const TextStyle(fontSize: 14),
                     ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '﴿${ayah.numberInSurah}﴾',
-                    textAlign: TextAlign.right,
-                  ),
+                  ],
                 ],
               ),
             ),
